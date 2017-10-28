@@ -2,6 +2,8 @@
 
 A simple application that pulls select market data from the Eve: Online API and displays it in React
 
+See it live: https://prices-eve.herokuapp.com
+
 _______
 
 # EQMVII-React-Express-Starter
