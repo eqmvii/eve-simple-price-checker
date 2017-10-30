@@ -68,6 +68,11 @@ app.get('/getmineralprices', function (req, httpRes) {
 var buy_prices = [];
 var sell_prices = [];
 
+// all market data from the forge
+var giant_array = [];
+// abusing the fact that arrays are objects shhh
+giant_array.stamp = false;
+
 var jita_prices = {
     tritanium: {
         name: "tritanium",
@@ -111,8 +116,170 @@ var jita_prices = {
     }
 };
 
-function process_orders(data, typeid) {
+function reset_jita_prices() {
+    jita_prices = {
+        tritanium: {
+            name: "tritanium",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        pyerite: {
+            name: "pyerite",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        mexallon: {
+            name: "mexallon",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        isogen: {
+            name: "isogen",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        nocxium: {
+            name: "nocxium",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        zydrine: {
+            name: "zydrine",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        megacyte: {
+            name: "megacyte",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        },
+        morphite: {
+            name: "morphite",
+            lowest_sell: Infinity,
+            highest_buy: 0
+        }
+    };
+
+}
+
+// (1) request all price data
+// (2) fill jita prices with high buy / low sell for 8 minerals
+// (3) fill giant array with all jita orders to be used as necessary
+function fetch_all_prices(callback) {
+    var time_right_now = new Date();
+    if (giant_array.stamp) {
+        console.log("Giant array has a stamp!");
+        time_elapsed = (time_right_now.getTime() - giant_array.stamp.getTime()) / 1000;
+        console.log(`${time_elapsed} seconds have passed since last request`);
+        // don't get new data if old data is 10 minutes old or less
+        if (time_elapsed < (60 * 10)) {
+            callback();
+            return;
+        }
+
+    }
+    else {
+        console.log("Giant array does NOT have a stamp");
+        // giant_array.stamp = new Date();
+        reset_jita_prices();
+    }
+
+    var prices = {};
+    var orders_fetched = 0;
+
+    // the forge region id: 10000002
+    // jita structure id: 60003760
+
+    // region orders URL
+    var orders_url = "https://esi.tech.ccp.is/latest/markets/10000002/orders/?datasource=tranquility&order_type=all&page="
+    var pages_fetched = 0;
+    var page_to_fetch = 1;
+    var max_pages = false;
+
+    // fetch the first page to find how many pages total to fetch
+    fetch(orders_url + page_to_fetch)
+        .then(res => {
+            if (res.ok) {
+                // console.log("Got a response for page " + page_to_fetch);
+                if (max_pages == false) {
+                    // console.log("Headers: ");
+                    // console.log(res.headers.get("x-pages"));
+                    max_pages = parseInt(res.headers.get("x-pages"), 10);
+                }
+                return res.json();
+            } else { throw Error(res.statusText) }
+        })
+        .then(res => {
+            // console.log("Order response information:");
+            // console.log("Page length: " + res.length);
+            orders_fetched += res.length;
+            // console.log("Headers:");
+            // console.log(res.headers);
+            process_orders(res);
+            pages_fetched += 1;
+            page_to_fetch += 1;
+            // console.log("Fetched: " + pages_fetched + "/" + max_pages);
+            return res;
+        })
+        .then(() => {
+            for (let i = page_to_fetch; i <= max_pages; i++) {
+                // fetchy fetchy 
+                fetch(orders_url + i)
+                    .then(res => {
+                        if (res.ok) {
+                            // console.log("Got a response!");
+                            // pages_fetched += 1;
+                            // console.log(pages_fetched);
+                            // console.log(typeof res.json())
+                            return res.json();
+                        } else { throw Error(res.statusText) }
+                    })
+                    .then(res => {
+                        pages_fetched += 1;
+                        orders_fetched += res.length;
+                        console.log(orders_fetched + " (" + pages_fetched + "/" + max_pages + ")");
+                        process_orders(res);
+                        if (pages_fetched == max_pages) {
+                            giant_array.stamp = new Date();
+                            // buy_prices.sort(function (a, b) { return a - b });
+                            // sell_prices.sort(function (a, b) { return a - b });
+                            // console.log("Highest buy: " + buy_prices[buy_prices.length - 1]);
+                            // console.log("Lowest sell: " + sell_prices[0]);
+                            console.log("Jita prices: ");
+                            for (var item in jita_prices) {
+                                console.log(item + ": " + jita_prices[item].highest_buy + " <-> " + jita_prices[item].lowest_sell);
+                            }
+                            // httpRes.json(jita_prices);
+                            //return true;
+                            callback();
+                            return;
+                        }
+
+                        // console.log("Page " + pages_fetched + ". Orders fetched: " + orders_fetched);                
+                    })
+                    .catch(err => {
+                        console.log(err);
+                        console.log("Error at i equals " + i);
+                        // TODO: Handle this better... 
+                    });
+
+            }
+
+        })
+        .catch(err => {
+            console.log(err);
+            console.log("Handle this better, error at initial request...");
+            // TODO: Handle this better
+        });
+
+
+}
+
+function process_orders(data) {
+
     //console.log(data.length);
+    // giant_array = giant_array.concat(data);
+    // console.log(`Giant array size is ${giant_array.length} right now`);
 
     // array of the typids we are interested in
     var typeids = [34, 35, 36, 37, 38, 39, 40, 11399];
@@ -120,6 +287,8 @@ function process_orders(data, typeid) {
     for (let i = 0; i < data.length; i++) {
         // Only look for orders of our item type in our station (Jita 4-4)
         if (data[i].location_id == 60003760) {
+            giant_array.push(data[i]);
+
             // Only do something if this is one of our type_ids
             if (typeids.indexOf(data[i].type_id) >= 0) {
                 // console.log("Found a matching order!");
@@ -203,90 +372,65 @@ function process_orders(data, typeid) {
             }
         }
     }
+    // end of for loop
+    // console.log(`Size of giant array is ${giant_array.length} items`);
 }
 
 //getjitamineralsell
 // Get jita mineral sell prices from the Eve: Online ESI API
 app.get('/getjitamineralsell', function (req, httpRes) {
-    console.log("Mineral SELL prices endpoint hit");
-    var prices = {};
-    var orders_fetched = 0;
+    console.log("##### Mineral SELL prices endpoint hit");
 
-    // the forge region id: 10000002
-    // jita structure id: 60003760
+    fetch_all_prices(() => {
+        console.log("##### I have a return value from fetch all");
+        httpRes.json(jita_prices);
+        console.log("httpRes sent");
 
-    // region orders URL
-    var orders_url = "https://esi.tech.ccp.is/latest/markets/10000002/orders/?datasource=tranquility&order_type=all&page="
-    var pages_fetched = 0;
-    var page_to_fetch = 1;
-    var max_pages = false;
+    });
 
-    // fetch the first page to find how many pages total to fetch
-    fetch(orders_url + page_to_fetch)
-        .then(res => {
-            if (res.ok) {
-                // console.log("Got a response for page " + page_to_fetch);
-                if (max_pages == false) {
-                    // console.log("Headers: ");
-                    // console.log(res.headers.get("x-pages"));
-                    max_pages = parseInt(res.headers.get("x-pages"), 10);
+    console.log("This is after the fetch all");
+});
+
+app.get('/getjitaprice', function (req, httpRes) {
+    console.log(req.query.typeid);
+
+    var item_prices = {
+        name: "No naming API yet, sorry",
+        type_id: req.query.typeid,
+        max_buy: 0,
+        min_sell: Infinity
+    };
+
+    fetch_all_prices(() => {
+        console.log("##### I have a return value from fetch all");
+        // httpRes.json(jita_prices);
+
+        // Loop through giant arary and get max/min for our item
+        for (let i = 0; i < giant_array.length; i++) {
+            if (giant_array[i].type_id == item_prices.type_id) {
+                var order_type;
+                if (giant_array[i].is_buy_order) {
+                    order_type = "buy";
+                    // buy_prices.push(data[i].price);
+                } else {
+                    order_type = "sell";
+                    //sell_prices.push(data[i].price);
                 }
-                return res.json();
-            } else { throw Error(res.statusText) }
-        })
-        .then(res => {
-            // console.log("Order response information:");
-            // console.log("Page length: " + res.length);
-            orders_fetched += res.length;
-            // console.log("Headers:");
-            // console.log(res.headers);
-            process_orders(res, 38);
-            pages_fetched += 1;
-            page_to_fetch += 1;
-            // console.log("Fetched: " + pages_fetched + "/" + max_pages);
-            return res;
-        })
-        .then(() => {
-            for (let i = page_to_fetch; i <= max_pages; i++) {
-                // fetchy fetchy 
-                fetch(orders_url + i)
-                    .then(res => {
-                        if (res.ok) {
-                            // console.log("Got a response!");
-                            // pages_fetched += 1;
-                            // console.log(pages_fetched);
-                            // console.log(typeof res.json())
-                            return res.json();
-                        } else { throw Error(res.statusText) }
-                    })
-                    .then(res => {
-                        pages_fetched += 1;
-                        orders_fetched += res.length;
-                        console.log(orders_fetched + " (" + pages_fetched + "/" + max_pages + ")");
-                        process_orders(res, 38);
-                        if (pages_fetched == max_pages) {
-                            // buy_prices.sort(function (a, b) { return a - b });
-                            // sell_prices.sort(function (a, b) { return a - b });
-                            // console.log("Highest buy: " + buy_prices[buy_prices.length - 1]);
-                            // console.log("Lowest sell: " + sell_prices[0]);
-                            console.log("Jita prices: ");
-                            for (var item in jita_prices) {
-                                console.log(item + ": " + jita_prices[item].highest_buy + " <-> " + jita_prices[item].lowest_sell);
-                            }
-                            httpRes.json(jita_prices);
-                        }
 
-                        // console.log("Page " + pages_fetched + ". Orders fetched: " + orders_fetched);                
-                    })
-                    .catch(err => { console.log(err) });
-
+                if (order_type === "buy" && giant_array[i].price > item_prices.max_buy) {
+                    item_prices.max_buy = giant_array[i].price;
+                }
+                else if (order_type === "sell" && giant_array[i].price < item_prices.min_sell) {
+                    item_prices.min_sell = giant_array[i].price;
+                }
             }
 
-        })
-        .catch(err => { console.log(err) });
+        }
+        httpRes.json(item_prices);
+        console.log("httpRes sent");
+    });
 
-
-
+    // httpRes.end();
 });
 
 // API endpoint for testing
