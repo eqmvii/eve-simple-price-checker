@@ -12,6 +12,8 @@ class App extends Component {
     super(props); // required in the constructor of a React component
 
     this.fetchMineralPrices = this.fetchMineralPrices.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleTyping = this.handleTyping.bind(this);
 
     this.state = {
       serverStatus: "No response from the server yet...",
@@ -40,6 +42,28 @@ class App extends Component {
       megacytebuy: 0,
       morphitebuy: 0,
       disableRefresh: false,
+      quickbar: [
+        {
+          name: "placeholderite",
+          type_id: 1234,
+          max_buy: 20,
+          min_sell: 21
+        },
+        {
+          name: "Refined placeholderite",
+          type_id: 12345,
+          max_buy: 2,
+          min_sell: 3
+        },
+        {
+          name: "Tritanium",
+          type_id: 221234,
+          max_buy: 4.7,
+          min_sell: 5.3
+        }
+
+      ],
+      searchInput: ''
     };
 
     // bind this for use in below callback
@@ -60,6 +84,48 @@ class App extends Component {
         that.setState({ serverStatus: "Server connected, fetching data" });
       }).catch(err => console.log(err));   
 
+  }
+
+  get_jita_price(type_id){
+    var item_url = '/getjitaprice?typeid=';
+    item_url += type_id;
+    fetch(item_url)
+      .then(res =>{
+        if (res.ok){
+          return res.json();
+        } else { throw Error(res.statusText)}
+      })
+      .then(res => {
+        console.log("Response from API:");
+        console.log(res);
+        var old_quickbar = this.state.quickbar.slice();
+        var new_item = {};
+        new_item.name = res.name;
+        new_item.type_id = res.type_id;
+        new_item.max_buy = res.max_buy;
+        new_item.min_sell = res.min_sell;
+        old_quickbar.push(new_item);
+        this.setState({quickbar: old_quickbar});
+      })
+      .catch(err => {console.log(err)});
+
+  }
+
+
+  handleSubmit(event) {
+    event.preventDefault();
+    console.log("submit clicked!");
+    console.log(this.state.searchInput);
+    var search_term = this.state.searchInput;
+    search_term = parseInt(search_term, 10);
+    this.get_jita_price(search_term);
+    this.setState({searchInput: ''});
+
+    //alert("Submit clicked!");
+  }
+
+  handleTyping(event) {
+    this.setState({ searchInput: event.target.value })
   }
 
   componentWillMount() {
@@ -212,6 +278,20 @@ class App extends Component {
           </div>
           <br />
           <br />
+          <ItemSearchBar 
+            handleSubmit={this.handleSubmit}
+            handleTyping={this.handleTyping}
+            searchInput={this.state.searchInput}
+            />
+          <br />
+          <ItemQuickBar 
+            items={this.state.quickbar}
+            
+            
+            />
+          <br />
+          <br />
+          <br />
           <p className="col-sm-6 col-md-offset-3">Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4.</p>
           <br />
 
@@ -220,5 +300,52 @@ class App extends Component {
     );
   }
 }
+
+class ItemSearchBar extends Component {
+  render() {
+    return (<div className="text-center">
+      <h3>Search for items to add to quickbar</h3>
+      <input type="text" value={this.props.searchInput} onChange={this.props.handleTyping}/><button type="submit" onClick={this.props.handleSubmit}>Submit</button>
+      </div>)
+  }
+}
+
+  class ItemQuickBar extends Component {
+    constructor(props) {
+      super(props);
+    }
+  
+    render() {
+
+      var tablerows = [];
+
+      for (let i = 0; i < this.props.items.length; i++) {
+        tablerows.push(<tr key={this.props.items[i].type_id}>
+          <td>{this.props.items[i].name}</td>
+          <td>{this.props.items[i].type_id}</td>
+          <td className="text-center">{this.props.items[i].max_buy}</td>
+          <td className="text-center">{this.props.items[i].min_sell}</td>
+          </tr>);
+      }
+
+
+
+      return (<div className="col-sm-6 col-sm-offset-3">
+        <table className="table">
+          <thead>
+            <tr>
+            <th><strong>Name</strong></th>
+            <th><strong>TypeID</strong></th>
+            <th className="text-center"><strong>Jita Buy</strong></th>
+            <th className="text-center"><strong>Jita Sell</strong></th>
+            </tr>
+            </thead>
+          <tbody>
+            {tablerows}
+            </tbody>
+          </table>
+        </div>)
+    }
+  }
 
 export default App;
