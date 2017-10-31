@@ -14,6 +14,7 @@ class App extends Component {
     this.fetchMineralPrices = this.fetchMineralPrices.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleTyping = this.handleTyping.bind(this);
+    this.handleRemoveItem = this.handleRemoveItem.bind(this);
 
     this.state = {
       serverStatus: "No response from the server yet...",
@@ -63,7 +64,8 @@ class App extends Component {
         }
 
       ],
-      searchInput: ''
+      searchInput: '',
+      saved_quickbar: false
     };
 
     // bind this for use in below callback
@@ -82,18 +84,18 @@ class App extends Component {
       .then(function (res) {
         //console.log(res);
         that.setState({ serverStatus: "Server connected, fetching data" });
-      }).catch(err => console.log(err));   
+      }).catch(err => console.log(err));
 
   }
 
-  get_jita_price(type_id){
+  get_jita_price(type_id) {
     var item_url = '/getjitaprice?typeid=';
     item_url += type_id;
     fetch(item_url)
-      .then(res =>{
-        if (res.ok){
+      .then(res => {
+        if (res.ok) {
           return res.json();
-        } else { throw Error(res.statusText)}
+        } else { throw Error(res.statusText) }
       })
       .then(res => {
         console.log("Response from API:");
@@ -105,9 +107,10 @@ class App extends Component {
         new_item.max_buy = res.max_buy;
         new_item.min_sell = res.min_sell;
         old_quickbar.push(new_item);
-        this.setState({quickbar: old_quickbar});
+        localStorage.quickbar = JSON.stringify(old_quickbar);
+        this.setState({ quickbar: old_quickbar, saved_quickbar: old_quickbar });
       })
-      .catch(err => {console.log(err)});
+      .catch(err => { console.log(err) });
 
   }
 
@@ -119,7 +122,7 @@ class App extends Component {
     var search_term = this.state.searchInput;
     search_term = parseInt(search_term, 10);
     this.get_jita_price(search_term);
-    this.setState({searchInput: ''});
+    this.setState({ searchInput: '' });
 
     //alert("Submit clicked!");
   }
@@ -128,12 +131,38 @@ class App extends Component {
     this.setState({ searchInput: event.target.value })
   }
 
+  handleRemoveItem(event){
+    //console.log(`Remove ${item}`);
+    console.log(event.target.id);
+    console.log(typeof event.target.id);
+    var quickbar_item_to_delete = parseInt(event.target.id, 10);
+    var old_quickbar = this.state.quickbar.slice();
+    old_quickbar.splice(quickbar_item_to_delete, 1);  
+   this.setState({quickbar: old_quickbar});
+  }
+
   componentWillMount() {
-    this.fetchMineralPrices();
+    // check session storage for quickbar
+    if (typeof (Storage) !== "undefined") {
+      if (localStorage.getItem("quickbar")) {
+        var saved_quickbar = JSON.parse(localStorage.getItem("quickbar"));
+        // hacky, load old data AND old prices
+        this.setState({ saved_quickbar: saved_quickbar })
+        // TODO: Actually fetch new prices
+        // That might actually be best as part of FMP function callback logic
+      }
+      // Then get prices
+      this.fetchMineralPrices();
+
+
+
+    } else {
+      console.log("No webstorage support");
+    }
   }
 
   fetchMineralPrices() {
-    this.setState({serverStatus: "Fetching price data...", disableRefresh: true});
+    this.setState({ serverStatus: "Fetching price data...", disableRefresh: true, quickbar: [] });
 
     // get universe price data
     fetch('/getmineralprices')
@@ -185,17 +214,29 @@ class App extends Component {
               nocxiumbuy: USD.format(parseFloat(res.nocxium.highest_buy, 10)),
               zydrinebuy: USD.format(parseFloat(res.zydrine.highest_buy, 10)),
               morphitebuy: USD.format(parseFloat(res.morphite.highest_buy, 10)),
-              serverStatus: 'Buy/sell prices fetched, table updated!',
+              serverStatus: 'Mineral buy/sell prices fetched, fetching quickbar!',
               disableRefresh: false
             });
+            // update the quickbar, if it exists
+            console.log(this.state.saved_quickbar);
+            var saved_quickbar_copy = this.state.saved_quickbar.slice();
+            if (saved_quickbar_copy) {
+              for (let i = 0; i < saved_quickbar_copy.length; i++) {
+                console.log(`fetch ${saved_quickbar_copy[i].type_id}`); 
+                this.get_jita_price(saved_quickbar_copy[i].type_id);
+              }
+              this.setState({serverStatus: "Prices updated!"});
+
+            }
+
           }).catch(err => {
             console.log(err);
-            this.setState({serverStatus: "Error pulling prices. Trying again..."});
+            this.setState({ serverStatus: "Error pulling prices. Trying again..." });
             setTimeout(this.fetchMineralPrices, 2000);
           });
       }).catch(err => {
         console.log(err);
-        this.setState({serverStatus: "Error pulling prices. Trying again..."});
+        this.setState({ serverStatus: "Error pulling prices. Trying again..." });
         setTimeout(this.fetchMineralPrices, 2000);
       });
   }
@@ -203,19 +244,19 @@ class App extends Component {
   render() {
     var status_icon;
     var refresh_button;
-    if (this.state.disableRefresh){
-      status_icon = (<i className="fa fa-spinner fa-spin" style={{fontSize: "20px"}}></i>);
+    if (this.state.disableRefresh) {
+      status_icon = (<i className="fa fa-spinner fa-spin" style={{ fontSize: "20px" }}></i>);
       refresh_button = (<button className="btn btn-primary btn-lg disabled">Refresh Prices</button>);
     } else {
-      refresh_button = (<button className ="btn btn-primary btn-lg" onClick={this.fetchMineralPrices}>Refresh Prices</button>)
-      status_icon = (<span className="glyphicon glyphicon-ok" style={{color:"green", fontSize: "20px"}}aria-hidden="true"></span>);
+      refresh_button = (<button className="btn btn-primary btn-lg" onClick={this.fetchMineralPrices}>Refresh Prices</button>)
+      status_icon = (<span className="glyphicon glyphicon-ok" style={{ color: "green", fontSize: "20px" }} aria-hidden="true"></span>);
     }
     return (
       <div className="container">
         <div className="row">
           <div className="jumbotron text-center">
             <h1>Eve: Online Mineral Prices</h1>
-            <h4>Market prices at a glance from the Eve ESI API</h4>            
+            <h4>Market prices at a glance from the Eve ESI API</h4>
           </div>
         </div>
         <div className="row">
@@ -274,21 +315,23 @@ class App extends Component {
           </table>
           <br />
           <div className="text-center">
-          {refresh_button}
+            {refresh_button}
           </div>
           <br />
           <br />
-          <ItemSearchBar 
+          <ItemSearchBar
             handleSubmit={this.handleSubmit}
             handleTyping={this.handleTyping}
             searchInput={this.state.searchInput}
-            />
+            
+          />
           <br />
-          <ItemQuickBar 
+          <ItemQuickBar
             items={this.state.quickbar}
-            
-            
-            />
+            handleRemoveItem={this.handleRemoveItem}
+
+
+          />
           <br />
           <br />
           <br />
@@ -305,47 +348,43 @@ class ItemSearchBar extends Component {
   render() {
     return (<div className="text-center">
       <h3>Search for items to add to quickbar</h3>
-      <input type="text" value={this.props.searchInput} onChange={this.props.handleTyping}/><button type="submit" onClick={this.props.handleSubmit}>Submit</button>
-      </div>)
+      <input type="text" value={this.props.searchInput} onChange={this.props.handleTyping} /><button type="submit" onClick={this.props.handleSubmit}>Submit</button>
+    </div>)
   }
 }
 
-  class ItemQuickBar extends Component {
-    constructor(props) {
-      super(props);
+class ItemQuickBar extends Component {
+
+  render() {
+    var tablerows = [];
+
+    for (let i = 0; i < this.props.items.length; i++) {
+      tablerows.push(<tr key={this.props.items[i].type_id}>
+        <td>{this.props.items[i].name}</td>
+        <td>{this.props.items[i].type_id}</td>
+        <td className="text-center">{USD.format(this.props.items[i].max_buy)}</td>
+        <td className="text-center">{USD.format(this.props.items[i].min_sell)}</td>
+        <td className="text-center"><button className="btn btn-danger btn-sm" id={i} onClick={this.props.handleRemoveItem}>X</button></td>
+      </tr>);
     }
-  
-    render() {
 
-      var tablerows = [];
-
-      for (let i = 0; i < this.props.items.length; i++) {
-        tablerows.push(<tr key={this.props.items[i].type_id}>
-          <td>{this.props.items[i].name}</td>
-          <td>{this.props.items[i].type_id}</td>
-          <td className="text-center">{this.props.items[i].max_buy}</td>
-          <td className="text-center">{this.props.items[i].min_sell}</td>
-          </tr>);
-      }
-
-
-
-      return (<div className="col-sm-6 col-sm-offset-3">
-        <table className="table">
-          <thead>
-            <tr>
+    return (<div className="col-sm-6 col-sm-offset-3">
+      <table className="table">
+        <thead>
+          <tr>
             <th><strong>Name</strong></th>
             <th><strong>TypeID</strong></th>
             <th className="text-center"><strong>Jita Buy</strong></th>
             <th className="text-center"><strong>Jita Sell</strong></th>
-            </tr>
-            </thead>
-          <tbody>
-            {tablerows}
-            </tbody>
-          </table>
-        </div>)
-    }
+            <th className="text-center"><strong>Remove Item</strong></th>
+          </tr>
+        </thead>
+        <tbody>
+          {tablerows}
+        </tbody>
+      </table>
+    </div>)
   }
+}
 
 export default App;

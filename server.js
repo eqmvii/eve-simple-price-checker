@@ -392,7 +392,14 @@ app.get('/getjitamineralsell', function (req, httpRes) {
 });
 
 app.get('/getjitaprice', function (req, httpRes) {
-    console.log(req.query.typeid);
+    console.log(`type_id: ${req.query.typeid}; name: ${req.query.name}`);
+
+    if(req.query.typeid){
+        console.log("type id given!");
+    }
+    if(req.query.name){
+        console.log("Item name given!");
+    }
 
     var item_prices = {
         name: "No naming API yet, sorry",
@@ -426,8 +433,27 @@ app.get('/getjitaprice', function (req, httpRes) {
             }
 
         }
-        httpRes.json(item_prices);
-        console.log("httpRes sent");
+
+        // use the type_id to get a name
+        var name_url = "https://esi.tech.ccp.is/latest/universe/types/";
+        name_url += req.query.typeid;
+        name_url += "/?datasource=tranquility&language=en-us";
+        fetch(name_url)
+            .then(res =>{
+                if(res.ok){
+                    return res.json();
+                } else { throw Error(res.statusText)}
+            })
+            .then(res => {
+                console.log(res);
+                console.log(res.name);
+                item_prices.name = res.name;
+                httpRes.json(item_prices);
+                console.log("httpRes sent");
+            })
+            .catch(err =>{console.log(err)})
+
+        
     });
 
     // httpRes.end();
