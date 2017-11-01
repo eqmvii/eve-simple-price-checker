@@ -12,7 +12,9 @@ app.use(express.static('build'));
 // Get mineral prices from the Eve: Online ESI API
 app.get('/getmineralprices', function (req, httpRes) {
     console.log("Mineral prices endpoint hit");
-    var prices = {};
+    var prices = {
+        error: false
+    };
 
     // https://esi.tech.ccp.is/latest/markets/prices/?datasource=tranquility
     fetch("https://esi.tech.ccp.is/latest/markets/prices/?datasource=tranquility")
@@ -61,7 +63,13 @@ app.get('/getmineralprices', function (req, httpRes) {
             }
             httpRes.json(prices);
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            console.log(err);
+            prices.error = true;
+            prices.error_message = "Prices HTTP request failed";
+            httpRes.json(prices);
+        }
+        );
 
 });
 
@@ -74,6 +82,7 @@ var giant_array = [];
 giant_array.stamp = false;
 
 var jita_prices = {
+    error: false,
     tritanium: {
         name: "tritanium",
         lowest_sell: Infinity,
@@ -118,6 +127,7 @@ var jita_prices = {
 
 function reset_jita_prices() {
     jita_prices = {
+        error: false,
         tritanium: {
             name: "tritanium",
             lowest_sell: Infinity,
@@ -166,6 +176,12 @@ function reset_jita_prices() {
 // (2) fill jita prices with high buy / low sell for 8 minerals
 // (3) fill giant array with all jita orders to be used as necessary
 function fetch_all_prices(callback) {
+    var status_object = {
+        error: false
+    };
+
+    var no_HTTP_errors = true;
+
     var time_right_now = new Date();
     if (giant_array.stamp) {
         console.log("Giant array has a stamp!");
@@ -173,7 +189,8 @@ function fetch_all_prices(callback) {
         console.log(`${time_elapsed} seconds have passed since last request`);
         // don't get new data if old data is 10 minutes old or less
         if (time_elapsed < (60 * 10)) {
-            callback();
+            status_object.message = "Cached data returned";
+            callback(status_object);
             return;
         }
 
@@ -239,48 +256,45 @@ function fetch_all_prices(callback) {
                         orders_fetched += res.length;
                         console.log(orders_fetched + " (" + pages_fetched + "/" + max_pages + ")");
                         process_orders(res);
-                        if (pages_fetched == max_pages) {
+                        if (pages_fetched == max_pages && no_HTTP_errors === true) {
                             giant_array.stamp = new Date();
-                            // buy_prices.sort(function (a, b) { return a - b });
-                            // sell_prices.sort(function (a, b) { return a - b });
-                            // console.log("Highest buy: " + buy_prices[buy_prices.length - 1]);
-                            // console.log("Lowest sell: " + sell_prices[0]);
-                            console.log("Jita prices: ");
-                            for (var item in jita_prices) {
-                                console.log(item + ": " + jita_prices[item].highest_buy + " <-> " + jita_prices[item].lowest_sell);
-                            }
-                            // httpRes.json(jita_prices);
-                            //return true;
-                            callback();
+                            status_object.message = "All pages received!";
+                            callback(status_object);
+                            return;
+                        }
+                        else if (pages_fetched == max_pages && no_HTTP_errors === false){
+                            status_object.message = "One or more pages failed";
+                            callback(status_object);
                             return;
                         }
 
-                        // console.log("Page " + pages_fetched + ". Orders fetched: " + orders_fetched);                
                     })
                     .catch(err => {
                         console.log(err);
                         console.log("Error at i equals " + i);
-                        // TODO: Handle this better... 
+                        pages_fetched += 1;
+                        no_HTTP_errors = false;
+                        jita_prices.error = true;
+                        status_object.error = true;
+                        if (pages_fetched == max_pages){
+                            satus_object.message = "Final page HTTP request failed";
+                            callback(status_object);
+                        }              
+
                     });
-
             }
-
         })
         .catch(err => {
             console.log(err);
             console.log("Handle this better, error at initial request...");
-            // TODO: Handle this better
+            status_object.error = true;
+            status_object.message = "The first data request failed";
+            jita_prices.error = true;
+            callback(status_object);
         });
-
-
 }
 
 function process_orders(data) {
-
-    //console.log(data.length);
-    // giant_array = giant_array.concat(data);
-    // console.log(`Giant array size is ${giant_array.length} right now`);
-
     // array of the typids we are interested in
     var typeids = [34, 35, 36, 37, 38, 39, 40, 11399];
 
@@ -381,8 +395,13 @@ function process_orders(data) {
 app.get('/getjitamineralsell', function (req, httpRes) {
     console.log("##### Mineral SELL prices endpoint hit");
 
-    fetch_all_prices(() => {
+    fetch_all_prices((status) => {
+        console.log(status);
         console.log("##### I have a return value from fetch all");
+        if (status.error === true) {
+            console.log("HTTP request error:");
+            console.log(status.message);
+        }
         httpRes.json(jita_prices);
         console.log("httpRes sent");
 
@@ -412,17 +431,11 @@ app.get('/typeidbyname', function(req, httpRes){
 })
 
 app.get('/getjitaprice', function (req, httpRes) {
-    console.log(`type_id: ${req.query.typeid}; name: ${req.query.name}`);
+    // console.log(`type_id: ${req.query.typeid}; name: ${req.query.name}`);
 
-    if(req.query.typeid){
-        console.log("type id given!");
-    }
-    if(req.query.name){
-        console.log("Item name given!");
-    }
 
     var item_prices = {
-        name: "No naming API yet, sorry",
+        name: "Error fetching price",
         type_id: req.query.typeid,
         max_buy: 0,
         min_sell: Infinity,
@@ -430,9 +443,16 @@ app.get('/getjitaprice', function (req, httpRes) {
 
     };
 
-    fetch_all_prices(() => {
+    fetch_all_prices((status) => {
         console.log("##### I have a return value from fetch all");
         // httpRes.json(jita_prices);
+        console.log(status.message);
+        if(status.error === true){
+            item_prices.error = true;
+            httpRes.json(item_prices);
+            console.log("Error object httpRes sent");
+            return;
+        }
 
         // Loop through giant arary and get max/min for our item
         for (let i = 0; i < giant_array.length; i++) {
@@ -467,8 +487,8 @@ app.get('/getjitaprice', function (req, httpRes) {
                 } else { throw Error(res.statusText)}
             })
             .then(res => {
-                console.log(res);
-                console.log(res.name);
+                //console.log(res);
+                console.log("Name server response: " + res.name);
                 item_prices.name = res.name;
                 httpRes.json(item_prices);
                 console.log("httpRes sent");
@@ -478,6 +498,7 @@ app.get('/getjitaprice', function (req, httpRes) {
                 item_prices.error = true;
                 httpRes.json(item_prices);
                 console.log("Error object httpRes sent");
+                return;
             })
 
         
