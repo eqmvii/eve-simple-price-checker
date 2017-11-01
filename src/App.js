@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import './App.css';
 
+// format currency values for display
 const USD = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD'
@@ -17,6 +18,9 @@ class App extends Component {
     this.handleRemoveItem = this.handleRemoveItem.bind(this);
     this.clearQuickbar = this.clearQuickbar.bind(this);
 
+    // Gigantic state object; initial test version of app with 
+    // hard coded state for each mineral price remained in place
+    // while more sane array/object storage was added later for individual items
     this.state = {
       serverStatus: "No response from the server yet...",
       tritanium: 0,
@@ -52,6 +56,7 @@ class App extends Component {
 
     // bind this for use in below callback
     // Not using an arrow function to preserve readability 
+    // and compare with binding used elsewhere for learning
     var that = this;
 
     // test connection to the server by fetching data to display
@@ -64,16 +69,16 @@ class App extends Component {
         }
       })
       .then(function (res) {
-        //console.log(res);
         that.setState({ serverStatus: "Server connected, fetching data" });
-      }).catch(err => console.log(err));
+      }).catch(err => {
+        console.log("Error hitting test endpoint - server down?");
+        console.log(err);
+      });
 
   }
 
   nameSearch(name) {
-    console.log("Searching by name...");
     var name_url = "/typeidbyname/?name=" + name;
-    console.log(name_url);
     fetch(name_url)
       .then(res => {
         if (res.ok) {
@@ -81,7 +86,6 @@ class App extends Component {
         } else { throw Error(res.statusText) }
       })
       .then(res => {
-        console.log(res);
         if (res.typeName !== 'bad item') {
           this.get_jita_price(res.typeID);
         }
@@ -90,19 +94,20 @@ class App extends Component {
         }
 
       })
-      .catch(err => console.log(err));
+      .catch(err => {
+        console.log("Error: name search failed");
+        console.log(err);
+      });
 
   }
 
   get_jita_price(type_id) {
-    console.log("cheeto" + type_id);
     var input = parseInt(type_id, 10);
     if (input) {
-      console.log("Number/typeID entered")
+      // old code for testing
+      // console.log("Number/typeID entered")
     }
     else {
-      console.log("Name search... try that first...");
-      console.log(type_id);
       this.nameSearch(type_id);
       return;
     }
@@ -117,8 +122,6 @@ class App extends Component {
         } else { throw Error(res.statusText) }
       })
       .then(res => {
-        console.log("Response from API:");
-        console.log(res);
         if (res.error) {
           this.setState({ error_message: `Bad search term (${res.type_id}) or server error`, disableRefresh: false, serverStatus: 'Up to date' });
           return;
@@ -151,22 +154,19 @@ class App extends Component {
           disableRefresh: false
         });
       })
-      .catch(err => { console.log(err) });
+      .catch(err => { 
+        console.log("Error fetching single price:");
+        console.log(err); 
+      });
 
   }
 
 
   handleSubmit(event) {
     event.preventDefault();
-    console.log("submit clicked!");
-    console.log(this.state.searchInput);
     var search_term = this.state.searchInput;
-    // search_term = parseInt(search_term, 10);
     this.setState({ searchInput: '', serverStatus: 'Looking up price...', disableRefresh: true });
-
     this.get_jita_price(search_term);
-
-    //alert("Submit clicked!");
   }
 
   handleTyping(event) {
@@ -174,14 +174,11 @@ class App extends Component {
   }
 
   handleRemoveItem(event) {
-    //console.log(`Remove ${item}`);
-    console.log(event.target.id);
-    console.log(typeof event.target.id);
     var quickbar_item_to_delete = parseInt(event.target.id, 10);
     var old_quickbar = this.state.quickbar.slice();
     old_quickbar.splice(quickbar_item_to_delete, 1);
     localStorage.quickbar = JSON.stringify(old_quickbar);
-    this.setState({ quickbar: old_quickbar });
+    this.setState({ quickbar: old_quickbar, saved_quickbar: old_quickbar });
   }
 
   clearQuickbar() {
@@ -189,37 +186,29 @@ class App extends Component {
       quickbar: [],
       saved_quickbar: []
     });
-    localStorage.quickbar = [];
-    // Dysprosium came back double check that bug too!
+    localStorage.quickbar = JSON.stringify([]);
   }
 
   componentDidMount() {
-    // TODO: Session storage doesn't work at all on Heroku
     // check session storage for quickbar
     if (typeof (Storage) !== "undefined") {
       if (localStorage.getItem("quickbar")) {
         var saved_quickbar = JSON.parse(localStorage.getItem("quickbar"));
-        console.log("Saved quickbar:");
-        console.log(saved_quickbar);
         this.setState({ saved_quickbar: saved_quickbar });
       }
     } else {
-      console.log("No webstorage support");
+      console.log("No webstorage support, no saved quickbar");
     }
     // Then get prices
     this.fetchMineralPrices();
   }
 
   fetchMineralPrices() {
-    // console.log("In fetch mineral prices now.");
-    // console.log(this.state.tritanium);
-    // console.log(this.state.quickbar);
     var empty_quickbar = this.state.quickbar.slice();
     for (let i = 0; i < empty_quickbar.length; i++) {
       empty_quickbar[i].max_buy = ". . .";
       empty_quickbar[i].min_sell = ". . .";
     }
-    // console.log(empty_quickbar);
     this.setState({ serverStatus: "Fetching price data...", disableRefresh: true, quickbar: empty_quickbar });
 
     // get universe price data
@@ -239,7 +228,6 @@ class App extends Component {
           setTimeout(this.fetchMineralPrices, 2000);
           return;
         }
-        // console.log(res);
         this.setState({
           tritanium: USD.format(parseFloat(res.tritanium, 10)),
           pyerite: USD.format(parseFloat(res.pyerite, 10)),
@@ -261,14 +249,13 @@ class App extends Component {
             }
           })
           .then(res => {
-            console.log(res);
             if (res.error) {
               console.log("error fetching mineral prices");
+              console.log(res);
               this.setState({ error_message: "Error fetching prices. Trying again...", serverStatus: "Prices server error." });
               setTimeout(this.fetchMineralPrices, 2000);
               return;
             }
-            // console.log(res);
             this.setState({
               tritaniumsell: USD.format(parseFloat(res.tritanium.lowest_sell, 10)),
               pyeritesell: USD.format(parseFloat(res.pyerite.lowest_sell, 10)),
@@ -291,11 +278,9 @@ class App extends Component {
               error_message: false
             });
             // update the quickbar, if it exists
-
             var saved_quickbar_copy = this.state.saved_quickbar.slice();
             if (saved_quickbar_copy.length > 0) {
               for (let i = 0; i < saved_quickbar_copy.length; i++) {
-                console.log(`fetch ${saved_quickbar_copy[i].type_id}`);
                 this.get_jita_price(saved_quickbar_copy[i].type_id);
               }
             }
@@ -419,7 +404,8 @@ class App extends Component {
           <br />
           <div className="col-sm-6 col-md-offset-3">
             <p className="text-center">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </p>
-            <p>Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4. Name search works with help of the API from <a href="https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/">https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/</a> - thanks!</p>
+            <p>Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4.</p>
+            <p>Name search works with help of the API from <a href="https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/">https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/</a> - thanks!</p>
           </div>
         </div>
       </div>
@@ -428,8 +414,6 @@ class App extends Component {
 }
 
 class ItemSearchBar extends Component {
-
-
   render() {
     var search_form;
     if (this.props.disableRefresh) {
