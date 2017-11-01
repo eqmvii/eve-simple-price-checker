@@ -266,7 +266,13 @@ class App extends Component {
             });
             // update the quickbar, if it exists
             console.log(this.state.saved_quickbar);
-            var saved_quickbar_copy = this.state.saved_quickbar.slice();
+            if(this.state.quickbar != false){
+              var saved_quickbar_copy = this.state.saved_quickbar.slice();
+            }
+            else {
+              var saved_quickbar_copy = false;
+            }
+            
             // this.setState({ quickbar: [], saved_quickbar: [] });
             if (saved_quickbar_copy) {
               for (let i = 0; i < saved_quickbar_copy.length; i++) {
