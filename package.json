@@ -1,6 +1,6 @@
 {
-  "name": "echat",
-  "version": "0.1.0",
+  "name": "prices-eve",
+  "version": "1.0.0",
   "dependencies": {
     "express": "^4.16.2",
     "node-fetch": "^1.7.3",
