@@ -165,6 +165,9 @@ class App extends Component {
   handleSubmit(event) {
     event.preventDefault();
     var search_term = this.state.searchInput;
+    if (search_term === '') {
+      return;
+    }
     this.setState({ searchInput: '', serverStatus: 'Looking up price...', disableRefresh: true });
     this.get_jita_price(search_term);
   }

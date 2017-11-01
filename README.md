@@ -1,8 +1,12 @@
 # Eve-Prices
 
-A simple application that pulls select market data from the Eve: Online API and displays it in React
+A Node/React application that pulls select market data from the EVE Online API.
+
+The original version was a learning project for the EVE API that just displayed mineral prices, and was ugly/verbose. It has since been udpated to include search and persistent quickbar features that are somewhat less terrible. 
 
 See it live: https://prices-eve.herokuapp.com
+
+Made from my react/express starter which in turn was made from create-react-app. Those readme files are below.
 
 _______
 
