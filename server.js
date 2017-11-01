@@ -391,6 +391,26 @@ app.get('/getjitamineralsell', function (req, httpRes) {
     console.log("This is after the fetch all");
 });
 
+app.get('/typeidbyname', function(req, httpRes){
+    // API from fuzzysteve (https://twitter.com/Fuzzysteve), thanks!
+    // Source: https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/
+    console.log(`Name to look up: ${req.query.name}`);
+    var api_url = "https://www.fuzzwork.co.uk/api/typeid.php?typename=";
+    api_url += req.query.name;
+    console.log(api_url);
+    fetch(api_url)
+        .then(res => {
+            if (res.ok){
+                return res.json();
+            } else { throw Error(res.statusText)}
+        })
+        .then(res => {
+            console.log(res);
+            httpRes.json(res);
+        })
+        .catch(err=>{console.log(err)})    
+})
+
 app.get('/getjitaprice', function (req, httpRes) {
     console.log(`type_id: ${req.query.typeid}; name: ${req.query.name}`);
 
@@ -405,7 +425,9 @@ app.get('/getjitaprice', function (req, httpRes) {
         name: "No naming API yet, sorry",
         type_id: req.query.typeid,
         max_buy: 0,
-        min_sell: Infinity
+        min_sell: Infinity,
+        error: false
+
     };
 
     fetch_all_prices(() => {
@@ -451,7 +473,12 @@ app.get('/getjitaprice', function (req, httpRes) {
                 httpRes.json(item_prices);
                 console.log("httpRes sent");
             })
-            .catch(err =>{console.log(err)})
+            .catch(err =>{
+                console.log(err);
+                item_prices.error = true;
+                httpRes.json(item_prices);
+                console.log("Error object httpRes sent");
+            })
 
         
     });

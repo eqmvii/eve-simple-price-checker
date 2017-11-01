@@ -15,6 +15,7 @@ class App extends Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleTyping = this.handleTyping.bind(this);
     this.handleRemoveItem = this.handleRemoveItem.bind(this);
+    this.clearQuickbar = this.clearQuickbar.bind(this);
 
     this.state = {
       serverStatus: "No response from the server yet...",
@@ -43,29 +44,10 @@ class App extends Component {
       megacytebuy: 0,
       morphitebuy: 0,
       disableRefresh: false,
-      quickbar: [
-        {
-          name: "placeholderite",
-          type_id: 1234,
-          max_buy: 20,
-          min_sell: 21
-        },
-        {
-          name: "Refined placeholderite",
-          type_id: 12345,
-          max_buy: 2,
-          min_sell: 3
-        },
-        {
-          name: "Tritanium",
-          type_id: 221234,
-          max_buy: 4.7,
-          min_sell: 5.3
-        }
-
-      ],
+      quickbar: [],
       searchInput: '',
-      saved_quickbar: false
+      saved_quickbar: false,
+      error_message: false
     };
 
     // bind this for use in below callback
@@ -88,7 +70,44 @@ class App extends Component {
 
   }
 
+  nameSearch(name) {
+    console.log("Searching by name...");
+    var name_url = "/typeidbyname/?name=" + name;
+    console.log(name_url);
+    fetch(name_url)
+      .then(res => {
+        if (res.ok) {
+          return res.json();
+        } else { throw Error(res.statusText) }
+      })
+      .then(res => {
+        console.log(res);
+        if (res.typeName != 'bad item') {
+          this.get_jita_price(res.typeID);
+        }
+        else {
+          this.setState({ error_message: `Bad search term (${name}) or server error` });
+        }
+
+      })
+      .catch(err => console.log(err));
+
+  }
+
   get_jita_price(type_id) {
+    console.log("cheeto" + type_id);
+    var input = parseInt(type_id, 10);
+    if (input) {
+      console.log("Number/typeID entered")
+    }
+    else {
+      console.log("Name search... try that first...");
+      console.log(type_id);
+      this.nameSearch(type_id);
+      return;
+    }
+
+    // assuming we have a type_id:
     var item_url = '/getjitaprice?typeid=';
     item_url += type_id;
     fetch(item_url)
@@ -100,15 +119,31 @@ class App extends Component {
       .then(res => {
         console.log("Response from API:");
         console.log(res);
+        if(res.error) {
+          this.setState({error_message: `Bad search term (${res.type_id}) or server error`});
+          return;
+        }
         var old_quickbar = this.state.quickbar.slice();
         var new_item = {};
         new_item.name = res.name;
         new_item.type_id = res.type_id;
-        new_item.max_buy = res.max_buy;
-        new_item.min_sell = res.min_sell;
-        old_quickbar.push(new_item);
+        new_item.max_buy = USD.format(res.max_buy);
+        new_item.min_sell = USD.format(res.min_sell);
+        var need_to_push = true;
+        // check to see if we're updating or adding to the quickbar
+        for (let i = 0; i < old_quickbar.length; i++) {
+          if (old_quickbar[i].type_id == new_item.type_id) {
+            old_quickbar[i].max_buy = new_item.max_buy;
+            old_quickbar[i].min_sell = new_item.min_sell;
+            need_to_push = false;
+          }
+        }
+        if (need_to_push) {
+          old_quickbar.push(new_item);
+        }
+
         localStorage.quickbar = JSON.stringify(old_quickbar);
-        this.setState({ quickbar: old_quickbar, saved_quickbar: old_quickbar });
+        this.setState({ quickbar: old_quickbar, saved_quickbar: old_quickbar, error_message: false });
       })
       .catch(err => { console.log(err) });
 
@@ -120,7 +155,7 @@ class App extends Component {
     console.log("submit clicked!");
     console.log(this.state.searchInput);
     var search_term = this.state.searchInput;
-    search_term = parseInt(search_term, 10);
+    // search_term = parseInt(search_term, 10);
     this.get_jita_price(search_term);
     this.setState({ searchInput: '' });
 
@@ -131,38 +166,50 @@ class App extends Component {
     this.setState({ searchInput: event.target.value })
   }
 
-  handleRemoveItem(event){
+  handleRemoveItem(event) {
     //console.log(`Remove ${item}`);
     console.log(event.target.id);
     console.log(typeof event.target.id);
     var quickbar_item_to_delete = parseInt(event.target.id, 10);
     var old_quickbar = this.state.quickbar.slice();
-    old_quickbar.splice(quickbar_item_to_delete, 1);  
-   this.setState({quickbar: old_quickbar});
+    old_quickbar.splice(quickbar_item_to_delete, 1);
+    localStorage.quickbar = JSON.stringify(old_quickbar);
+    this.setState({ quickbar: old_quickbar });
   }
 
-  componentWillMount() {
+  clearQuickbar() {
+    this.setState({ quickbar: [], saved_quickbar: [] });
+    localStorage.quickbar = false;
+    // Dysprosium came back double check that bug too!
+  }
+
+  componentDidMount() {
     // check session storage for quickbar
     if (typeof (Storage) !== "undefined") {
       if (localStorage.getItem("quickbar")) {
         var saved_quickbar = JSON.parse(localStorage.getItem("quickbar"));
-        // hacky, load old data AND old prices
-        this.setState({ saved_quickbar: saved_quickbar })
-        // TODO: Actually fetch new prices
-        // That might actually be best as part of FMP function callback logic
+        console.log("Saved quickbar:");
+        console.log(saved_quickbar);
+        this.setState({ saved_quickbar: saved_quickbar });
       }
-      // Then get prices
-      this.fetchMineralPrices();
-
-
-
     } else {
       console.log("No webstorage support");
     }
+    // Then get prices
+    this.fetchMineralPrices();
   }
 
   fetchMineralPrices() {
-    this.setState({ serverStatus: "Fetching price data...", disableRefresh: true, quickbar: [] });
+    console.log("In fetch mineral prices now.");
+    console.log(this.state.tritanium);
+    console.log(this.state.quickbar);
+    var empty_quickbar = this.state.quickbar.slice();
+    for (let i = 0; i < empty_quickbar.length; i++) {
+      empty_quickbar[i].max_buy = ". . .";
+      empty_quickbar[i].min_sell = ". . .";
+    }
+    console.log(empty_quickbar);
+    this.setState({ serverStatus: "Fetching price data...", disableRefresh: true, quickbar: empty_quickbar });
 
     // get universe price data
     fetch('/getmineralprices')
@@ -220,12 +267,13 @@ class App extends Component {
             // update the quickbar, if it exists
             console.log(this.state.saved_quickbar);
             var saved_quickbar_copy = this.state.saved_quickbar.slice();
+            // this.setState({ quickbar: [], saved_quickbar: [] });
             if (saved_quickbar_copy) {
               for (let i = 0; i < saved_quickbar_copy.length; i++) {
-                console.log(`fetch ${saved_quickbar_copy[i].type_id}`); 
+                console.log(`fetch ${saved_quickbar_copy[i].type_id}`);
                 this.get_jita_price(saved_quickbar_copy[i].type_id);
               }
-              this.setState({serverStatus: "Prices updated!"});
+              this.setState({ serverStatus: "Prices updated!" });
 
             }
 
@@ -242,22 +290,24 @@ class App extends Component {
   }
 
   render() {
+    var error_alert = false;
+    if (this.state.error_message) {
+      error_alert = (<div className="alert alert-warning text-center col-sm-6 col-sm-offset-3"><strong>Error: </strong>{this.state.error_message}</div>)
+    }
     var status_icon;
     var refresh_button;
     if (this.state.disableRefresh) {
       status_icon = (<i className="fa fa-spinner fa-spin" style={{ fontSize: "20px" }}></i>);
-      refresh_button = (<button className="btn btn-primary btn-lg disabled">Refresh Prices</button>);
+      refresh_button = (<button className="btn btn-success btn-lg disabled">Refresh Prices</button>);
     } else {
-      refresh_button = (<button className="btn btn-primary btn-lg" onClick={this.fetchMineralPrices}>Refresh Prices</button>)
+      refresh_button = (<button className="btn btn-success btn-lg" onClick={this.fetchMineralPrices}>Refresh Prices</button>)
       status_icon = (<span className="glyphicon glyphicon-ok" style={{ color: "green", fontSize: "20px" }} aria-hidden="true"></span>);
     }
     return (
       <div className="container">
-        <div className="row">
-          <div className="jumbotron text-center">
-            <h1>Eve: Online Mineral Prices</h1>
-            <h4>Market prices at a glance from the Eve ESI API</h4>
-          </div>
+        <div className="text-center">
+          <h1>EVE Online Market Prices</h1>
+          <h4>Market prices at a glance from the Eve ESI API</h4>
         </div>
         <div className="row">
           <h3 className="text-center"><strong>Data Status</strong></h3>
@@ -313,32 +363,46 @@ class App extends Component {
 
             </tbody>
           </table>
-          <br />
-          <div className="text-center">
-            {refresh_button}
-          </div>
-          <br />
-          <br />
+        </div>
+        <div className="row">
+          {error_alert}
+        </div>
+        <div className="row">
           <ItemSearchBar
             handleSubmit={this.handleSubmit}
             handleTyping={this.handleTyping}
             searchInput={this.state.searchInput}
-            
           />
-          <br />
+        </div>
+        <div className="row">
           <ItemQuickBar
             items={this.state.quickbar}
             handleRemoveItem={this.handleRemoveItem}
-
-
-          />
+          />       
           <br />
-          <br />
-          <br />
-          <p className="col-sm-6 col-md-offset-3">Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4.</p>
-          <br />
-
         </div>
+        <div className="row">
+
+
+          <br />
+          <div className="col-sm-6 col-md-offset-3">
+            <br />
+            <div className="text-center">
+              {refresh_button} <button className="btn btn-lg btn-danger" onClick={this.clearQuickbar}>Delete Quickbar</button>
+            </div>
+          </div>
+          <br />
+          </div>
+          <div className="row">
+            <br />  
+            <div className="col-sm-6 col-md-offset-3">
+            <p className="text-center">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </p>
+            <p>Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4. Name search works with help of the API from <a href="https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/">https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/</a> - thanks!</p>
+          </div>
+          </div>
+           
+
+
       </div>
     );
   }
@@ -348,7 +412,12 @@ class ItemSearchBar extends Component {
   render() {
     return (<div className="text-center">
       <h3>Search for items to add to quickbar</h3>
-      <input type="text" value={this.props.searchInput} onChange={this.props.handleTyping} /><button type="submit" onClick={this.props.handleSubmit}>Submit</button>
+      <form onSubmit={this.props.handleSubmit}>
+        <div className="form-group">
+          <input type="text" placeholder="Enter search term" value={this.props.searchInput} onChange={this.props.handleTyping} /> <button type="submit" className="btn btn-primary" onClick={this.props.handleSubmit}>Submit</button>
+        </div>
+      </form>
+      <p>Examples: 2321, 16650, 32307, 40520, 44992, Polyaramids, PLEX, Spiced Wine</p>
     </div>)
   }
 }
@@ -362,8 +431,8 @@ class ItemQuickBar extends Component {
       tablerows.push(<tr key={this.props.items[i].type_id}>
         <td>{this.props.items[i].name}</td>
         <td>{this.props.items[i].type_id}</td>
-        <td className="text-center">{USD.format(this.props.items[i].max_buy)}</td>
-        <td className="text-center">{USD.format(this.props.items[i].min_sell)}</td>
+        <td className="text-center">{this.props.items[i].max_buy}</td>
+        <td className="text-center">{this.props.items[i].min_sell}</td>
         <td className="text-center"><button className="btn btn-danger btn-sm" id={i} onClick={this.props.handleRemoveItem}>X</button></td>
       </tr>);
     }
@@ -376,7 +445,7 @@ class ItemQuickBar extends Component {
             <th><strong>TypeID</strong></th>
             <th className="text-center"><strong>Jita Buy</strong></th>
             <th className="text-center"><strong>Jita Sell</strong></th>
-            <th className="text-center"><strong>Remove Item</strong></th>
+            <th className="text-center"><strong>Remove</strong></th>
           </tr>
         </thead>
         <tbody>
