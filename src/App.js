@@ -78,7 +78,9 @@ class App extends Component {
   }
 
   nameSearch(name) {
-    var name_url = "/typeidbyname/?name=" + name;
+    // deprecated route
+    // var name_url = "/typeidbyname/?name=" + name;
+    var name_url = "/apinamesearch/?name=" + name;
     fetch(name_url)
       .then(res => {
         if (res.ok) {
@@ -86,8 +88,8 @@ class App extends Component {
         } else { throw Error(res.statusText) }
       })
       .then(res => {
-        if (res.typeName !== 'bad item') {
-          this.get_jita_price(res.typeID);
+        if (res.inventorytype !== undefined) {
+          this.get_jita_price(res.inventorytype[0]);
         }
         else {
           this.setState({ error_message: `Bad search term (${name}) or server error`, disableRefresh: false, serverStatus: 'Up to date' });
@@ -108,6 +110,7 @@ class App extends Component {
       // console.log("Number/typeID entered")
     }
     else {
+      // the input is alphabetical, not numeric, so run a name search
       this.nameSearch(type_id);
       return;
     }
@@ -212,7 +215,7 @@ class App extends Component {
       empty_quickbar[i].max_buy = ". . .";
       empty_quickbar[i].min_sell = ". . .";
     }
-    this.setState({ serverStatus: "Fetching price data...", disableRefresh: true, quickbar: empty_quickbar });
+    this.setState({ serverStatus: "Fetching price data... This can take some time...", disableRefresh: true, quickbar: empty_quickbar });
 
     // get universe price data
     fetch('/getmineralprices')
@@ -240,7 +243,7 @@ class App extends Component {
           nocxium: USD.format(parseFloat(res.nocxium, 10)),
           zydrine: USD.format(parseFloat(res.zydrine, 10)),
           morphite: USD.format(parseFloat(res.morphite, 10)),
-          serverStatus: "Universe prices fetched... fetching jita buy/sell prices"
+          serverStatus: "Universe prices fetched... fetching jita buy/sell prices... This can take some time..."
         });
         // get Jita buy and sell data
         fetch('/getjitamineralsell')
@@ -276,7 +279,7 @@ class App extends Component {
               nocxiumbuy: USD.format(parseFloat(res.nocxium.highest_buy, 10)),
               zydrinebuy: USD.format(parseFloat(res.zydrine.highest_buy, 10)),
               morphitebuy: USD.format(parseFloat(res.morphite.highest_buy, 10)),
-              serverStatus: 'Mineral buy/sell prices fetched, fetching quickbar!',
+              serverStatus: 'Mineral buy/sell prices fetched, fetching quickbar, this can take some time...',
               disableRefresh: false,
               error_message: false
             });
@@ -408,7 +411,6 @@ class App extends Component {
           <div className="col-sm-6 col-md-offset-3">
             <p className="text-center">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </p>
             <p>Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4.</p>
-            <p>Name search works with help of the API from <a href="https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/">https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/</a> - thanks!</p>
           </div>
         </div>
       </div>

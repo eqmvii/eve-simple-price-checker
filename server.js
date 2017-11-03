@@ -336,6 +336,7 @@ app.get('/getjitamineralsell', function (req, httpRes) {
     });
 });
 
+// DEPRECATED route - new route is /apinamesearch below
 app.get('/typeidbyname', function(req, httpRes){
     // API from fuzzysteve (https://twitter.com/Fuzzysteve), thanks!
     // Source: https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/
@@ -353,6 +354,27 @@ app.get('/typeidbyname', function(req, httpRes){
         })
         .catch(err=>{
             console.log("Error with FuzzWorks name API:");
+            console.log(err);
+        })    
+})
+
+// NEW ROUTE for doing the search by name
+app.get('/apinamesearch', function(req, httpRes){
+    var api_url ="https://esi.tech.ccp.is/latest/search/?categories=inventorytype&datasource=tranquility&language=en-us&search=";    
+    api_url += req.query.name;
+    // strict mode means only an exact match will be returned
+    api_url += "&strict=true";
+    fetch(api_url)
+        .then(res => {
+            if (res.ok){
+                return res.json();
+            } else { throw Error(res.statusText)}
+        })
+        .then(res => {
+            httpRes.json(res);
+        })
+        .catch(err=>{
+            console.log("Error with ESI name search API:");
             console.log(err);
         })    
 })
