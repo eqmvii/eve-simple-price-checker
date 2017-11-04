@@ -337,6 +337,7 @@ app.get('/getjitamineralsell', function (req, httpRes) {
 });
 
 // DEPRECATED route - new route is /apinamesearch below
+/*
 app.get('/typeidbyname', function(req, httpRes){
     // API from fuzzysteve (https://twitter.com/Fuzzysteve), thanks!
     // Source: https://www.fuzzwork.co.uk/tools/api-typename-to-typeid/
@@ -357,6 +358,7 @@ app.get('/typeidbyname', function(req, httpRes){
             console.log(err);
         })    
 })
+*/
 
 // NEW ROUTE for doing the search by name
 app.get('/apinamesearch', function(req, httpRes){

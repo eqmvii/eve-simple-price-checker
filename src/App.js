@@ -69,7 +69,7 @@ class App extends Component {
         }
       })
       .then(function (res) {
-        that.setState({ serverStatus: "Server connected, fetching data" });
+        that.setState({ serverStatus: "Server connected, fetching data... this will take several seconds..." });
       }).catch(err => {
         console.log("Error hitting test endpoint - server down?");
         console.log(err);
@@ -215,7 +215,7 @@ class App extends Component {
       empty_quickbar[i].max_buy = ". . .";
       empty_quickbar[i].min_sell = ". . .";
     }
-    this.setState({ serverStatus: "Fetching price data... This can take some time...", disableRefresh: true, quickbar: empty_quickbar });
+    this.setState({ serverStatus: "Booting up Heroku server, fetching 300,000+ market orders... This can take some time...", disableRefresh: true, quickbar: empty_quickbar });
 
     // get universe price data
     fetch('/getmineralprices')
@@ -243,7 +243,7 @@ class App extends Component {
           nocxium: USD.format(parseFloat(res.nocxium, 10)),
           zydrine: USD.format(parseFloat(res.zydrine, 10)),
           morphite: USD.format(parseFloat(res.morphite, 10)),
-          serverStatus: "Universe prices fetched... fetching jita buy/sell prices... This can take some time..."
+          serverStatus: "Universe prices fetched... processing 300,000+ jita buy/sell prices... please wait..."
         });
         // get Jita buy and sell data
         fetch('/getjitamineralsell')
@@ -321,8 +321,8 @@ class App extends Component {
     return (
       <div className="container">
         <div className="text-center">
-          <h1>EVE Online Market Prices</h1>
-          <h4>Market prices at a glance from the Eve ESI API</h4>
+          <h1>MarketWatch</h1>
+          <h4>Prices at a glance from the Eve ESI API</h4>
         </div>
         <div className="row">
           <h3 className="text-center"><strong>Data Status</strong></h3>
