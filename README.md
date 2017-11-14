@@ -1,8 +1,10 @@
 # Eve-Prices
 
-A Node/React application that pulls select market data from the EVE Online API.
+A Node/React application that pulls and processes market data from the EVE Online [Swagger API](https://esi.tech.ccp.is/latest/).
 
-The original version was a learning project for the EVE API that just displayed mineral prices, and was ugly/verbose. It has since been udpated to include search and persistent quickbar features that are somewhat less terrible. 
+Allows a user to search for market prices (by item name or type_id), and has a persistent quickbar that uses sessionStorage to remember item choices. Prices are calculated by pulling all market orders (generally 300,000+) in the game's main trade region, then calculating the highest buy order and lowest sell order for each selected item.
+
+The original version was a project to learn about the EVE API, and just displayed mineral prices. It was ugly/verbose. The quickbar and search were bolted on top of that, so the code is a little clunky.
 
 See it live: https://prices-eve.herokuapp.com
 
