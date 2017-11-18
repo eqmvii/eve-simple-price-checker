@@ -1,4 +1,15 @@
+// EVE MarketWatch - by Eric Mancini (https://github.com/eqmvii)
+/* 
+A quick search of the EVE Online marketplace & and a dashboard to save your searches for later
+*/
+
+// Main Libraries
 import React, { Component } from 'react';
+
+// Components
+import ItemQuickbar from './components/ItemQuickbar.js';
+
+// webpack CSS dependency
 import './App.css';
 
 // format currency values for display
@@ -6,7 +17,6 @@ const USD = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD'
 });
-
 
 class App extends Component {
   constructor(props) {
@@ -71,8 +81,8 @@ class App extends Component {
       .then(function (res) {
         that.setState({ serverStatus: "Server connected, fetching data... this will take several seconds..." });
       }).catch(err => {
-        console.log("Error hitting test endpoint - server down?");
-        console.log(err);
+        console.error("Error hitting test endpoint - server down?");
+        //console.log(err);
       });
 
   }
@@ -203,7 +213,7 @@ class App extends Component {
         this.setState({ saved_quickbar: saved_quickbar });
       }
     } else {
-      console.log("No webstorage support, no saved quickbar");
+      console.warn("No browser webstorage support, so no quickbar saving won't work.");
     }
     // Then get prices
     this.fetchMineralPrices();
@@ -390,7 +400,7 @@ class App extends Component {
           />
         </div>
         <div className="row">
-          <ItemQuickBar
+          <ItemQuickbar
             items={this.state.quickbar}
             handleRemoveItem={this.handleRemoveItem}
           />
@@ -463,37 +473,6 @@ class ItemSearchBar extends Component {
   }
 }
 
-class ItemQuickBar extends Component {
 
-  render() {
-    var tablerows = [];
-    for (let i = 0; i < this.props.items.length; i++) {
-      tablerows.push(<tr key={this.props.items[i].type_id}>
-        <td>{this.props.items[i].name}</td>
-        <td>{this.props.items[i].type_id}</td>
-        <td className="text-center">{this.props.items[i].max_buy}</td>
-        <td className="text-center">{this.props.items[i].min_sell}</td>
-        <td className="text-center"><button className="btn btn-danger btn-sm" id={i} onClick={this.props.handleRemoveItem}>X</button></td>
-      </tr>);
-    }
-
-    return (<div className="col-sm-6 col-sm-offset-3">
-      <table className="table">
-        <thead>
-          <tr>
-            <th><strong>Name</strong></th>
-            <th><strong>TypeID</strong></th>
-            <th className="text-center"><strong>Jita Buy</strong></th>
-            <th className="text-center"><strong>Jita Sell</strong></th>
-            <th className="text-center"><strong>Remove</strong></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tablerows}
-        </tbody>
-      </table>
-    </div>)
-  }
-}
 
 export default App;
