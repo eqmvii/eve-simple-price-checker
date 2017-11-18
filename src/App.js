@@ -8,6 +8,7 @@ import React, { Component } from 'react';
 
 // Components
 import ItemQuickbar from './components/ItemQuickbar.js';
+import ItemSearchbar from './components/ItemSearchbar.js';
 
 // webpack CSS dependency
 import './App.css';
@@ -84,7 +85,6 @@ class App extends Component {
         console.error("Error hitting test endpoint - server down?");
         //console.log(err);
       });
-
   }
 
   nameSearch(name) {
@@ -171,9 +171,7 @@ class App extends Component {
         console.log("Error fetching single price:");
         console.log(err); 
       });
-
   }
-
 
   handleSubmit(event) {
     event.preventDefault();
@@ -332,7 +330,7 @@ class App extends Component {
       <div className="container">
         <div className="text-center">
           <h1>MarketWatch</h1>
-          <h4>Prices at a glance from the Eve ESI API</h4>
+          <h4>Prices at a glance from the <a href="https://esi.tech.ccp.is/latest/">EVE Swagger API</a></h4>
         </div>
         <div className="row">
           <h3 className="text-center"><strong>Data Status</strong></h3>
@@ -392,7 +390,7 @@ class App extends Component {
           {error_alert}
         </div>
         <div className="row">
-          <ItemSearchBar
+          <ItemSearchbar
             handleSubmit={this.handleSubmit}
             handleTyping={this.handleTyping}
             searchInput={this.state.searchInput}
@@ -420,59 +418,12 @@ class App extends Component {
           <br />
           <div className="col-sm-6 col-md-offset-3">
             <p className="text-center">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </p>
-            <p>Data pulled from the <a href="https://esi.tech.ccp.is/latest/">ESI API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4.</p>
+            <p>Data pulled from the <a href="https://esi.tech.ccp.is/latest/">EVE Swagger API</a>. <strong>Universe Price</strong> is the price returned by the generic price API. <strong>Jita Buy</strong> is the highest buy order located in Jita 4-4, regardless of volume. <strong>Jita Sell</strong> is the lowest sell order located in Jita 4-4, regardless of volume. Prices will not reflect regional buy/sell orders, even if they can be filled in Jita 4-4.</p>
           </div>
         </div>
       </div>
     );
   }
 }
-
-class ItemSearchBar extends Component {
-  render() {
-    var search_form;
-    if (this.props.disableRefresh) {
-      search_form = (
-        <form>
-          <div className="form-group">
-            <input
-              maxLength="100"
-              type="text"
-              placeholder="Enter search term"
-              value='' /> <button
-                type="submit"
-                className="disabled btn btn-primary"
-              >Submit</button>
-          </div>
-        </form>
-      );
-    }
-    else {
-      search_form = (
-        <form onSubmit={this.props.handleSubmit}>
-          <div className="form-group">
-            <input
-              maxLength="100"
-              type="text"
-              placeholder="Enter search term"
-              value={this.props.searchInput}
-              onChange={this.props.handleTyping} /> <button
-                type="submit"
-                className="btn btn-primary"
-                onClick={this.props.handleSubmit}
-              >Submit</button>
-          </div>
-        </form>
-      )
-    }
-    return (<div className="text-center">
-      <h3>Search for items to add to quickbar</h3>
-      {search_form}
-      <p>Examples: 2321, 16650, 32307, 40520, 44992, Polyaramids, PLEX, Spiced Wine</p>
-    </div>)
-  }
-}
-
-
 
 export default App;

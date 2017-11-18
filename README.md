@@ -6,6 +6,8 @@ Allows a user to search for market prices (by item name or type_id), and has a p
 
 The original version was a project to learn about the EVE API, and just displayed mineral prices. It was ugly/verbose. The quickbar and search were bolted on top of that, so the code is a little clunky.
 
+Unit tests are handled with Jest and saved in App.test.js
+
 See it live: https://prices-eve.herokuapp.com
 
 Made from my react/express starter which in turn was made from create-react-app. Those readme files are below.

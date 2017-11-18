@@ -3,6 +3,10 @@ import React, { Component } from 'react';
 
 /*
 Expected props: 
+  <ItemQuickbar
+    items={this.state.quickbar}
+    handleRemoveItem={this.handleRemoveItem}
+  />
     items - an array of items with prices
     handleRemoveItem - a function to handle removing a single item from the quickbar
 */
@@ -10,6 +14,9 @@ class ItemQuickbar extends Component {
       render() {
         // build an array of item names, prices, and delete buttons
         var tablerows = [];
+        if (!this.props.items){
+            return false;
+        }
         for (let i = 0; i < this.props.items.length; i++) {
           tablerows.push(<tr key={this.props.items[i].type_id}>
             <td>{this.props.items[i].name}</td>
