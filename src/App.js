@@ -329,7 +329,7 @@ class App extends Component {
     return (
       <div className="container">
         <div className="text-center">
-          <h1>MarketWatch</h1>
+          <h1>Market Watch</h1>
           <h4>Prices at a glance from the <a href="https://esi.tech.ccp.is/latest/">EVE Swagger API</a></h4>
         </div>
         <div className="row">
