@@ -1,5 +1,5 @@
 // EVE MarketWatch - by Eric Mancini (https://github.com/eqmvii)
-/* 
+/*
 A quick search of the EVE Online marketplace & and a dashboard to save your searches for later
 */
 
@@ -29,7 +29,7 @@ class App extends Component {
     this.handleRemoveItem = this.handleRemoveItem.bind(this);
     this.clearQuickbar = this.clearQuickbar.bind(this);
 
-    // Gigantic state object; initial test version of app with 
+    // Gigantic state object; initial test version of app with
     // hard coded state for each mineral price remained in place
     // while more sane array/object storage was added later for individual items
     this.state = {
@@ -66,7 +66,7 @@ class App extends Component {
     };
 
     // bind this for use in below callback
-    // Not using an arrow function to preserve readability 
+    // Not using an arrow function to preserve readability
     // and compare with binding used elsewhere for learning
     var that = this;
 
@@ -98,8 +98,8 @@ class App extends Component {
         } else { throw Error(res.statusText) }
       })
       .then(res => {
-        if (res.inventorytype !== undefined) {
-          this.get_jita_price(res.inventorytype[0]);
+        if (res.inventory_type !== undefined) {
+          this.get_jita_price(res.inventory_type[0]);
         }
         else {
           this.setState({ error_message: `Bad search term (${name}) or server error`, disableRefresh: false, serverStatus: 'Up to date' });
@@ -167,9 +167,9 @@ class App extends Component {
           disableRefresh: false
         });
       })
-      .catch(err => { 
+      .catch(err => {
         console.log("Error fetching single price:");
-        console.log(err); 
+        console.log(err);
       });
   }
 

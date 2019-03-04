@@ -364,7 +364,7 @@ app.get('/typeidbyname', function(req, httpRes){
 // NEW ROUTE for doing the search by name
 // TODO: Debug this, this route is throwing errors.
 app.get('/apinamesearch', function(req, httpRes){
-    var api_url ="https://esi.evetech.net/latest/search/?categories=inventorytype&datasource=tranquility&language=en-us&search=";
+    var api_url = "https://esi.evetech.net/latest/search/?categories=inventory_type&datasource=tranquility&language=en-us&search=";
     api_url += req.query.name;
     // strict mode means only an exact match will be returned
     api_url += "&strict=true";
