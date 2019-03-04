@@ -2,7 +2,7 @@
 import React, { Component } from 'react';
 
 /*
-Expected props: 
+Expected props:
   <ItemSearchbar
     handleSubmit={this.handleSubmit}
     handleTyping={this.handleTyping}
@@ -55,6 +55,7 @@ class ItemSearchbar extends Component {
       }
       return (<div className="text-center">
         <h3>Search for items to add to quickbar</h3>
+        <h3> NOTE: Search by name currently broken, only typids work</h3>
         {search_form}
         <p>Examples: 2321, 16650, 32307, 40520, 44992, Polyaramids, PLEX, Spiced Wine</p>
       </div>)

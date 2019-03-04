@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 var fetch = require('node-fetch')
 
-// Port 3001 by default or else whatever Heroku tells it to be 
+// Port 3001 by default or else whatever Heroku tells it to be
 const port = process.env.PORT || 3001;
 
 // express looks up files relative to the static directory,
@@ -19,8 +19,9 @@ app.get('/getmineralprices', function (req, httpRes) {
         error: false
     };
 
-    // https://esi.tech.ccp.is/latest/markets/prices/?datasource=tranquility
-    fetch("https://esi.tech.ccp.is/latest/markets/prices/?datasource=tranquility")
+    // https://esi.evetech.net/latest/markets/prices/?datasource=tranquility
+    // New route: https://esi.evetech.net/latest/markets/prices/?datasource=tranquility
+    fetch("https://esi.evetech.net/latest/markets/prices/?datasource=tranquility")
         .then(res => {
             if (res.ok) {
                 return res.json();
@@ -71,7 +72,7 @@ app.get('/getmineralprices', function (req, httpRes) {
 // TODO: Implement a PostgreSQL database instead
 var giant_array = [];
 
-// abusing the fact that arrays are objects 
+// abusing the fact that arrays are objects
 // giving my array a timestamp property
 // shhh don't tell anyone
 giant_array.stamp = false;
@@ -161,7 +162,7 @@ function fetch_all_prices(callback) {
     // jita structure id: 60003760
 
     // region orders URL
-    var orders_url = "https://esi.tech.ccp.is/latest/markets/10000002/orders/?datasource=tranquility&order_type=all&page="
+    var orders_url = "https://esi.evetech.net/latest/markets/10000002/orders/?datasource=tranquility&order_type=all&page="
     var pages_fetched = 0;
     var page_to_fetch = 1;
     var max_pages = false;
@@ -221,14 +222,14 @@ function fetch_all_prices(callback) {
                         if (pages_fetched == max_pages){
                             satus_object.message = "Final page HTTP request failed";
                             callback(status_object);
-                        }       
+                        }
 
                     });
             }
         })
         .catch(err => {
             console.log("Error on initial market data request:");
-            console.log(err);            
+            console.log(err);
             status_object.error = true;
             status_object.message = "The first data request failed";
             jita_prices.error = true;
@@ -356,13 +357,14 @@ app.get('/typeidbyname', function(req, httpRes){
         .catch(err=>{
             console.log("Error with FuzzWorks name API:");
             console.log(err);
-        })    
+        })
 })
 */
 
 // NEW ROUTE for doing the search by name
+// TODO: Debug this, this route is throwing errors.
 app.get('/apinamesearch', function(req, httpRes){
-    var api_url ="https://esi.tech.ccp.is/latest/search/?categories=inventorytype&datasource=tranquility&language=en-us&search=";    
+    var api_url ="https://esi.evetech.net/latest/search/?categories=inventorytype&datasource=tranquility&language=en-us&search=";
     api_url += req.query.name;
     // strict mode means only an exact match will be returned
     api_url += "&strict=true";
@@ -378,7 +380,7 @@ app.get('/apinamesearch', function(req, httpRes){
         .catch(err=>{
             console.log("Error with ESI name search API:");
             console.log(err);
-        })    
+        })
 })
 
 app.get('/getjitaprice', function (req, httpRes) {
@@ -419,7 +421,7 @@ app.get('/getjitaprice', function (req, httpRes) {
         }
 
         // use the type_id to get a name
-        var name_url = "https://esi.tech.ccp.is/latest/universe/types/";
+        var name_url = "https://esi.evetech.net/latest/universe/types/";
         name_url += req.query.typeid;
         name_url += "/?datasource=tranquility&language=en-us";
         fetch(name_url)
@@ -439,7 +441,7 @@ app.get('/getjitaprice', function (req, httpRes) {
                 httpRes.json(item_prices);
                 console.log("Error object httpRes sent");
                 return;
-            })        
+            })
     });
 });
 
